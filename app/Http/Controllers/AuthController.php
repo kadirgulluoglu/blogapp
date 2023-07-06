@@ -28,7 +28,12 @@ class AuthController extends Controller
     {
         $data = $request->all();
         $data['password'] = Hash::make($request->password);
-        User::create($data);
-        return "Kayıt başarılı";
+        try {
+            User::create($data);
+            return response()->json(['message' => 'Kayıt başarıyla oluşturuldu'], 201);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Kayıt oluşturulurken hata oluştu'], 500);
+        }
+
     }
 }
