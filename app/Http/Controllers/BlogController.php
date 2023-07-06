@@ -6,6 +6,9 @@ use Illuminate\Http\Request;
 use App\Models\Blog;
 use App\Models\BlogCategories;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+
 class BlogController extends Controller
 {
     /**
@@ -27,20 +30,28 @@ class BlogController extends Controller
      */
     public function store(Request $request)
     {
-        $category = $request->categoryids;
-        $category = explode(",", $category);
-        $data = $request->all();
-        $data['user_id'] = 1;
-        $blog = Blog::create($data);
-
-        foreach ( $category as $c) {
-            BlogCategories::create([
-                'blog_id' => $blog->id,
-                'category_id' => $c
-            ]);
-
+        DB::beginTransaction();
+        try {
+            $category = $request->categoryids;
+            $category = explode(",", $category);
+            $data = $request->all();
+            $data['user_id'] = Auth::id();
+            $blog = Blog::create($data);
+            if ($blog) {
+                foreach ($category as $c) {
+                    BlogCategories::create([
+                        'blog_id' => $blog->id,
+                        'category_id' => $c
+                    ]);
+                }
+            }
+            DB::commit();
+            response()->json(['message' => 'Kayıt başarıyla oluşturuldu'], 201);
+        } catch (\Exception $e) {
+            DB::rollback();
+            response()->json(['message' => 'Kayıt oluşturulurken bir hata oluştu. Hata: ' .$e], 500);
         }
-        return response()->json($blog);
+
     }
 
     /**
@@ -48,7 +59,8 @@ class BlogController extends Controller
      */
     public function show(string $id)
     {
-        //
+        $blog = Blog::find($id);
+        return response()->json($blog);
     }
 
     /**
@@ -61,7 +73,29 @@ class BlogController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        DB::beginTransaction();
+        try {
+            $category = $request->categoryids;
+            $category = explode(",", $category);
+            $data = $request->all();
+            $data['user_id'] = Auth::id();
+            $blog = Blog::find($id);
+            $blog->update($data);
+            if ($blog) {
+                BlogCategories::where('blog_id', $id)->delete();
+                foreach ($category as $c) {
+                    BlogCategories::create([
+                        'blog_id' => $blog->id,
+                        'category_id' => $c
+                    ]);
+                }
+            }
+            DB::commit();
+           return response()->json(['message' => 'Kayıt başarıyla güncellendi'], 201);
+        } catch (\Exception $e) {
+            DB::rollback();
+           return response()->json(['message' => 'Kayıt güncellenirken bir hata oluştu. Hata: ' .$e], 500);
+        }
     }
 
     /**
