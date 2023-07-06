@@ -23,4 +23,12 @@ class AuthController extends Controller
         ];
         return response($response, 201);
     }
+
+    function register(Request $request)
+    {
+        $data = $request->all();
+        $data['password'] = Hash::make($request->password);
+        User::create($data);
+        return "Kayıt başarılı";
+    }
 }
